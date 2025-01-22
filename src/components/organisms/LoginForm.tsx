@@ -17,7 +17,6 @@ const LoginForm = ({ onLogin }: { onLogin: (role: string) => void }) => {
       try {
         console.log(username);
         console.log(password);
-        
         const response = await fetch("http://127.0.0.1:5001/users/login", {
           method: "POST",
           headers: {
@@ -33,6 +32,8 @@ const LoginForm = ({ onLogin }: { onLogin: (role: string) => void }) => {
 
         const data = await response.json();
         const userRole = data.user.role;
+        localStorage.setItem("user", JSON.stringify(data.user));
+        console.log(JSON.parse(localStorage.getItem("user")));
 
         if (userRole === "admin") {
           onLogin("admin");
@@ -41,7 +42,6 @@ const LoginForm = ({ onLogin }: { onLogin: (role: string) => void }) => {
         } else {
           throw new Error("Role tidak valid");
         }
-        
       } catch (err: any) {
         setError(err.message);
       }

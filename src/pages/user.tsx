@@ -5,26 +5,24 @@ import { useRouter } from "next/navigation";
 
 const UserPage = () => {
   const [data, setData] = useState<object | null>(null);
+  const [uploadImagePath, setUploadImagePath] = useState<object | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [time, setTime] = useState(new Date());
-  const [capturedImages, setCapturedImages] = useState<
-    { type: string; image: string }[]
-  >([]);
+  // const [capturedImages, setCapturedImages] = useState<
+  //   { type: string; image: string }[]
+  // >([]);
 
   const router = useRouter();
 
   const uploadPhoto = async (imageBase64: string, type: string) => {
     try {
-      // Konversi base64 ke Blob
       const base64Response = await fetch(imageBase64);
       const blob = await base64Response.blob();
 
-      // Buat FormData
       const formData = new FormData();
-      formData.append("file", blob, `${type}-${Date.now()}.png`); // Beri nama file unik
+      formData.append("file", blob, `${type}-${Date.now()}.png`);
 
-      // Kirim permintaan ke server
       const response = await fetch("http://127.0.0.1:5001/users/upload-photo", {
         method: "POST",
         body: formData,
@@ -32,11 +30,12 @@ const UserPage = () => {
 
       if (!response.ok) {
         console.log(response);
-        
+
         throw new Error("Failed to upload photo ");
       }
 
       const data = await response.json();
+      setUploadImagePath(data?.file_path);
       console.log("Upload successful:", data);
     } catch (error) {
       console.error("Error uploading photo:", error);
@@ -49,7 +48,7 @@ const UserPage = () => {
     router.push("/");
   };
 
-  const captureImage = (type: string) => {
+  const takePhoto = async (type: string) => {
     if (videoRef.current && canvasRef.current) {
       const canvas = canvasRef.current;
       const video = videoRef.current;
@@ -58,32 +57,67 @@ const UserPage = () => {
       if (context) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         const dataUrl = canvas.toDataURL("image/png");
-        setCapturedImages((prev) => [...prev, { type, image: dataUrl }]);
+
+        await uploadPhoto(dataUrl, type);
       }
     }
   };
 
   const checkin = async (type: string) => {
-    captureImage(type);
-    console.log(localStorage);
-    // Ambil gambar terakhir dari capturedImages
-    const latestImage = capturedImages[capturedImages.length - 1];
-    if (latestImage) {
-      await uploadPhoto(latestImage.image, type); // Upload gambar
+    takePhoto(type);
+    try {
+      const response = await fetch("http://127.0.0.1:5001/users/checkin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json", // Tambahkan header ini
+        },
+        body: JSON.stringify({
+          user_id: data?.id,
+          photo_path: uploadImagePath,
+        }),
+      });
+
+      if (!response.ok) {
+        console.log(response);
+        throw new Error("Failed to checkin");
+      }
+    } catch (error) {
+      console.error("Error:", error);
     }
   };
 
-  const checkout = (type: string) => {
-    captureImage(type);
+  const checkout = async (type: string) => {
+    takePhoto(type);
+    try {
+      const response = await fetch("http://127.0.0.1:5001/users/checkin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json", // Tambahkan header ini
+        },
+        body: JSON.stringify({
+          user_id: data?.id,
+          photo_path: uploadImagePath,
+        }),
+      });
+
+      if (!response.ok) {
+        console.log(response);
+        throw new Error("Failed to checkin");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
   };
 
   useEffect(() => {
     const storedData = JSON.parse(localStorage.getItem("user"));
-    setData(storedData);
+    if (storedData) {
+      setData(storedData);
+    }
+
     navigator.mediaDevices
       .getUserMedia({ video: true })
       .then((stream) => {
@@ -113,9 +147,15 @@ const UserPage = () => {
           color="white"
           onClick={handleLogout}
         />
-        <h1 className="flex-grow flex text-6xl font-sans p-4 justify-center">
-          {data?.username ? data?.username : ""}
-        </h1>
+        {data?.username ? (
+          <h1 className="flex-grow flex text-6xl font-sans p-4 justify-center">
+            {data.username}
+          </h1>
+        ) : (
+          <h1 className="flex-grow flex text-6xl font-sans p-4 justify-center">
+            Loading...
+          </h1>
+        )}
       </div>
       <div className="flex flex-row flex-grow">
         <div className="flex-grow flex items-center justify-center gap-3 flex-col text-secondary bg-white shadow-lg shadow-black-500/70">
