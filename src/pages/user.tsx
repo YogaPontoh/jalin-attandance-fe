@@ -3,19 +3,86 @@ import { useEffect, useRef, useState } from "react";
 import { BiLogOut } from "react-icons/bi";
 import { useRouter } from "next/navigation";
 
+interface UserData {
+  id: number;
+  username: string;
+  role: string;
+}
+
 const UserPage = () => {
-  const [data, setData] = useState<object | null>(null);
+  const [data, setData] = useState<UserData | null>(null);
   const [uploadImagePath, setUploadImagePath] = useState<object | null>(null);
+  const [isCheckedIn, setIsCheckedIn] = useState<boolean>(false);
+  const [isCheckedOut, setIsCheckedOut] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [time, setTime] = useState(new Date());
-  // const [capturedImages, setCapturedImages] = useState<
-  //   { type: string; image: string }[]
-  // >([]);
 
   const router = useRouter();
 
-  const uploadPhoto = async (imageBase64: string, type: string) => {
+  useEffect(() => {
+    // Ambil data user dari localStorage
+    const storedData = localStorage.getItem("user");
+    if (storedData) {
+      try {
+        const parsedData = JSON.parse(storedData);
+        setData(parsedData);
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    }
+
+    // Cek status check-in dan check-out dari localStorage
+    setIsCheckedIn(localStorage.getItem("checkedIn") === "true");
+    setIsCheckedOut(localStorage.getItem("checkedOut") === "true");
+
+    // Akses webcam
+    const getWebcamStream = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error("Error accessing webcam:", error);
+      }
+    };
+
+    getWebcamStream();
+
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fungsi untuk mengambil foto dari kamera
+  const takePhoto = async (): Promise<string | null> => {
+    if (videoRef.current && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const context = canvas.getContext("2d");
+
+      if (context) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL("image/png");
+      }
+    }
+    return null;
+  };
+
+  const uploadPhoto = async (imageBase64: string, type: string): Promise<string | null> => {
     try {
       const base64Response = await fetch(imageBase64);
       const blob = await base64Response.blob();
@@ -35,10 +102,11 @@ const UserPage = () => {
       }
 
       const data = await response.json();
-      setUploadImagePath(data?.file_path);
       console.log("Upload successful:", data);
+      return data?.file_path || null;
     } catch (error) {
       console.error("Error uploading photo:", error);
+      return null
     }
   };
 
@@ -48,95 +116,87 @@ const UserPage = () => {
     router.push("/");
   };
 
-  const takePhoto = async (type: string) => {
-    if (videoRef.current && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      const context = canvas.getContext("2d");
-
-      if (context) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const dataUrl = canvas.toDataURL("image/png");
-
-        await uploadPhoto(dataUrl, type);
-      }
+  const checkin = async () => {
+    if (isCheckedIn) {
+      alert("You have already checked in today.");
+      return;
     }
-  };
 
-  const checkin = async (type: string) => {
-    takePhoto(type);
+    const photoBase64 = await takePhoto();
+    if (!photoBase64) {
+      alert("Failed to capture photo.");
+      return;
+    }
+
+    const photoPath = await uploadPhoto(photoBase64, "Check-in");
+    if (!photoPath) {
+      alert("Failed to upload photo.");
+      return;
+    }
+
     try {
       const response = await fetch("http://127.0.0.1:5001/users/checkin", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json", // Tambahkan header ini
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: data?.id,
-          photo_path: uploadImagePath,
+          photo_path: photoPath,
         }),
       });
 
-      if (!response.ok) {
-        console.log(response);
-        throw new Error("Failed to checkin");
+      if (response.ok) {
+        setIsCheckedIn(true);
+        localStorage.setItem("checkedIn", "true");
+        alert("Check-in successful!");
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to check-in");
       }
     } catch (error) {
       console.error("Error:", error);
     }
   };
 
-  const checkout = async (type: string) => {
-    takePhoto(type);
+  const checkout = async () => {
+    if (isCheckedOut) {
+      alert("You have already checked out today.");
+      return;
+    }
+
+    const photoBase64 = await takePhoto();
+    if (!photoBase64) {
+      alert("Failed to capture photo.");
+      return;
+    }
+
+    const photoPath = await uploadPhoto(photoBase64, "Check-out");
+    if (!photoPath) {
+      alert("Failed to upload photo.");
+      return;
+    }
+
     try {
-      const response = await fetch("http://127.0.0.1:5001/users/checkin", {
+      const response = await fetch("http://127.0.0.1:5001/users/checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json", // Tambahkan header ini
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: data?.id,
-          photo_path: uploadImagePath,
+          photo_path: photoPath,
         }),
       });
 
-      if (!response.ok) {
-        console.log(response);
-        throw new Error("Failed to checkin");
+      if (response.ok) {
+        setIsCheckedOut(true);
+        localStorage.setItem("checkedOut", "true");
+        alert("Check-out successful!");
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to check-out");
       }
     } catch (error) {
       console.error("Error:", error);
     }
   };
-
-  useEffect(() => {
-    const storedData = JSON.parse(localStorage.getItem("user"));
-    if (storedData) {
-      setData(storedData);
-    }
-
-    navigator.mediaDevices
-      .getUserMedia({ video: true })
-      .then((stream) => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      })
-      .catch((error) => {
-        console.error("Error accessing webcam:", error);
-      });
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
 
   return (
     <div className="flex flex-col h-screen">
@@ -190,18 +250,20 @@ const UserPage = () => {
       <div className="flex flex-row flex-shrink pb-36 bg-white">
         <div className="flex-grow bg-white justify-center flex">
           <button
-            className="bg-primary border rounded-2xl p-5 font-sans text-white hover:text-black hover:bg-white transition-all shadow-lg shadow-black-500/70"
-            onClick={() => checkin("Check-in")}
+            className="bg-primary border rounded-2xl p-5 font-sans text-white hover:text-black hover:bg-white transition-all"
+            onClick={checkin}
+            disabled={isCheckedIn}
           >
-            Check-in
+            {isCheckedIn ? "Already Checked In" : "Check In"}
           </button>
         </div>
         <div className="flex-grow justify-center flex">
-          <button
-            className="bg-primary border rounded-2xl p-5 font-sans text-white hover:text-black hover:bg-white transition-all shadow-lg shadow-black-500/70"
-            onClick={() => checkout("Check-out")}
+        <button
+            className="bg-primary border rounded-2xl p-5 font-sans text-white hover:text-black hover:bg-white transition-all"
+            onClick={checkout}
+            disabled={isCheckedOut}
           >
-            Check-out
+            {isCheckedOut ? "Already Checked Out" : "Check Out"}
           </button>
         </div>
       </div>
