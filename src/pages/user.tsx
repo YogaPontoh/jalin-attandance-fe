@@ -21,7 +21,6 @@ const UserPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-    // Ambil data user dari localStorage
     const storedData = localStorage.getItem("user");
     if (storedData) {
       try {
@@ -32,14 +31,11 @@ const UserPage = () => {
       }
     }
 
-    // Cek status check-in dan check-out dari localStorage
-    setIsCheckedIn(localStorage.getItem("checkedIn") === "true");
-    setIsCheckedOut(localStorage.getItem("checkedOut") === "true");
-
-    // Akses webcam
     const getWebcamStream = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
@@ -59,13 +55,18 @@ const UserPage = () => {
   }, []);
 
   useEffect(() => {
+    if (data?.id) {
+      attandanceStatus();
+    }
+  }, [data]);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       setTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Fungsi untuk mengambil foto dari kamera
   const takePhoto = async (): Promise<string | null> => {
     if (videoRef.current && canvasRef.current) {
       const canvas = canvasRef.current;
@@ -82,7 +83,10 @@ const UserPage = () => {
     return null;
   };
 
-  const uploadPhoto = async (imageBase64: string, type: string): Promise<string | null> => {
+  const uploadPhoto = async (
+    imageBase64: string,
+    type: string
+  ): Promise<string | null> => {
     try {
       const base64Response = await fetch(imageBase64);
       const blob = await base64Response.blob();
@@ -106,14 +110,37 @@ const UserPage = () => {
       return data?.file_path || null;
     } catch (error) {
       console.error("Error uploading photo:", error);
-      return null
+      return null;
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem("user");
-
     router.push("/");
+  };
+
+  const attandanceStatus = async () => {
+      try {
+        const response = await fetch(
+          `http://127.0.0.1:5001/users/attendance-status?user_id=${data?.id}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          setIsCheckedIn(result.last_checkin ? result.last_checkin : false)
+          setIsCheckedOut(result.last_checkout ? result.last_checkin : false)
+        } else {
+          console.error("Failed to fetch attendance status");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+      }
   };
 
   const checkin = async () => {
@@ -258,7 +285,7 @@ const UserPage = () => {
           </button>
         </div>
         <div className="flex-grow justify-center flex">
-        <button
+          <button
             className="bg-primary border rounded-2xl p-5 font-sans text-white hover:text-black hover:bg-white transition-all"
             onClick={checkout}
             disabled={isCheckedOut}
