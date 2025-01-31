@@ -11,7 +11,6 @@ interface UserData {
 
 const UserPage = () => {
   const [data, setData] = useState<UserData | null>(null);
-  const [uploadImagePath, setUploadImagePath] = useState<object | null>(null);
   const [isCheckedIn, setIsCheckedIn] = useState<boolean>(false);
   const [isCheckedOut, setIsCheckedOut] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -121,28 +120,28 @@ const UserPage = () => {
     router.push("/");
   };
 
-  const attandanceStatus = async (id) => {
-      try {
-        const response = await fetch(
-          `http://127.0.0.1:5001/users/attendance-status?user_id=${id}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.ok) {
-          const result = await response.json();
-          setIsCheckedIn(result.last_checkin ? result.last_checkin : false)
-          setIsCheckedOut(result.last_checkout ? result.last_checkin : false)
-        } else {
-          console.error("Failed to fetch attendance status");
+  const attandanceStatus = async (id: number) => {
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:5001/users/attendance-status?user_id=${id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
-      } catch (error) {
-        console.error("Error:", error);
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        setIsCheckedIn(result.last_checkin ? result.last_checkin : false);
+        setIsCheckedOut(result.last_checkout ? result.last_checkin : false);
+      } else {
+        console.error("Failed to fetch attendance status");
       }
+    } catch (error) {
+      console.error("Error:", error);
+    }
   };
 
   const checkin = async () => {
@@ -248,27 +247,27 @@ const UserPage = () => {
       </div>
       <div className="flex flex-row flex-grow">
         <div className="flex-grow flex items-center justify-center gap-3 flex-col text-secondary bg-white shadow-lg shadow-black-500/70">
-        {time ? (
-  <>
-    <p className="text-2xl mt-4">
-      {time.toLocaleDateString("id-ID", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })}
-    </p>
-    <p className="text-7xl font-mono mt-2">
-      {time.toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })}
-    </p>
-  </>
-) : (
-  <p>Loading time...</p>
-)}
+          {time ? (
+            <>
+              <p className="text-2xl mt-4">
+                {time.toLocaleDateString("id-ID", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </p>
+              <p className="text-7xl font-mono mt-2">
+                {time.toLocaleTimeString("id-ID", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })}
+              </p>
+            </>
+          ) : (
+            <p>Loading time...</p>
+          )}
         </div>
         <div className="flex-grow flex items-center justify-center bg-white">
           <div className="relative">
@@ -299,16 +298,6 @@ const UserPage = () => {
             disabled={isCheckedOut}
           >
             {isCheckedOut ? "Already Checked Out" : "Check Out"}
-          </button>
-        </div> <div className="flex-grow justify-center flex">
-          <button
-            className="bg-primary border rounded-2xl p-5 font-sans text-white hover:text-black hover:bg-white transition-all"
-            onClick={() => {
-              
-              console.log(isCheckedOut);
-            }}
-          >
-            log button
           </button>
         </div>
       </div>
