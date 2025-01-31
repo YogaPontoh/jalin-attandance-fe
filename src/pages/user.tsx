@@ -16,7 +16,7 @@ const UserPage = () => {
   const [isCheckedOut, setIsCheckedOut] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState<Date | null>(null);
 
   const router = useRouter();
 
@@ -26,6 +26,7 @@ const UserPage = () => {
       try {
         const parsedData = JSON.parse(storedData);
         setData(parsedData);
+        attandanceStatus(parsedData?.id);
       } catch (error) {
         console.error("Error parsing user data:", error);
       }
@@ -56,11 +57,12 @@ const UserPage = () => {
 
   useEffect(() => {
     if (data?.id) {
-      attandanceStatus();
+      attandanceStatus(data?.id);
     }
-  }, [data]);
+  }, [data?.id]);
 
   useEffect(() => {
+    setTime(new Date());
     const timer = setInterval(() => {
       setTime(new Date());
     }, 1000);
@@ -119,10 +121,10 @@ const UserPage = () => {
     router.push("/");
   };
 
-  const attandanceStatus = async () => {
+  const attandanceStatus = async (id) => {
       try {
         const response = await fetch(
-          `http://127.0.0.1:5001/users/attendance-status?user_id=${data?.id}`,
+          `http://127.0.0.1:5001/users/attendance-status?user_id=${id}`,
           {
             method: "GET",
             headers: {
@@ -246,21 +248,27 @@ const UserPage = () => {
       </div>
       <div className="flex flex-row flex-grow">
         <div className="flex-grow flex items-center justify-center gap-3 flex-col text-secondary bg-white shadow-lg shadow-black-500/70">
-          <p className="text-2xl mt-4">
-            {time.toLocaleDateString("id-ID", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </p>
-          <p className="text-7xl font-mono mt-2">
-            {time.toLocaleTimeString("id-ID", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })}
-          </p>
+        {time ? (
+  <>
+    <p className="text-2xl mt-4">
+      {time.toLocaleDateString("id-ID", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })}
+    </p>
+    <p className="text-7xl font-mono mt-2">
+      {time.toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })}
+    </p>
+  </>
+) : (
+  <p>Loading time...</p>
+)}
         </div>
         <div className="flex-grow flex items-center justify-center bg-white">
           <div className="relative">
@@ -291,6 +299,16 @@ const UserPage = () => {
             disabled={isCheckedOut}
           >
             {isCheckedOut ? "Already Checked Out" : "Check Out"}
+          </button>
+        </div> <div className="flex-grow justify-center flex">
+          <button
+            className="bg-primary border rounded-2xl p-5 font-sans text-white hover:text-black hover:bg-white transition-all"
+            onClick={() => {
+              
+              console.log(isCheckedOut);
+            }}
+          >
+            log button
           </button>
         </div>
       </div>
