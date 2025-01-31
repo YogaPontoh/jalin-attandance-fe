@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 interface UserReport {
   id: number;
   name: string;
+  department: string;
   date: string;
   check_in_time: string;
   check_in_photo: string;
@@ -204,6 +205,7 @@ const AdminPage = () => {
             <thead className="bg-gray-100">
               <tr className="text-secondary">
                 <th className="border border-gray-400 px-4 py-2">Name</th>
+                <th className="border border-gray-400 px-4 py-2">Department</th>
                 <th className="border border-gray-400 px-4 py-2">Date</th>
                 <th className="border border-gray-400 px-4 py-2">
                   Check-in Time
@@ -228,6 +230,9 @@ const AdminPage = () => {
                 <tr key={item.id} className="hover:bg-gray-200 text-black">
                   <td className="border border-gray-300 px-4 py-2 text-center">
                     {item.name}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    {item.department}
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-center">
                     {item.date}
