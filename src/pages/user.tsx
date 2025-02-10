@@ -7,6 +7,7 @@ interface UserData {
   id: number;
   username: string;
   role: string;
+  name: string;
 }
 
 const UserPage = () => {
@@ -237,7 +238,7 @@ const UserPage = () => {
         />
         {data?.username ? (
           <h1 className="flex-grow flex text-6xl font-sans p-4 justify-center">
-            {data.username}
+            {data.name}
           </h1>
         ) : (
           <h1 className="flex-grow flex text-6xl font-sans p-4 justify-center">

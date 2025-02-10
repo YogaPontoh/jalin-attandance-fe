@@ -29,24 +29,28 @@ export async function getServerSideProps() {
 
 const AdminPage = () => {
   const [sortedData, setSortedData] = useState<UserReport[]>([]);
+  const [departmentFilter, setDepartmentFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const router = useRouter();
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(departmentFilter);
+  }, [departmentFilter]);
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
     router.push("/");
   };
 
-  const fetchData = async () => {
+  const fetchData = async (department="") => {
     try {
-      const response = await fetch("http://127.0.0.1:5001/users/report");
+      const url = department
+      ? `http://127.0.0.1:5001/users/report?department=${encodeURIComponent(department)}`
+      : "http://127.0.0.1:5001/users/report";
+
+      const response = await fetch(url);
       const result = await response.json();
-      console.log(result);
 
       setSortedData(
         [...result].sort(
@@ -60,8 +64,12 @@ const AdminPage = () => {
 
   const handleDownload = async () => {
     try {
+      const url = departmentFilter
+      ? `http://127.0.0.1:5001/users/report/download?department=${encodeURIComponent(departmentFilter)}`
+      : "http://127.0.0.1:5001/users/report/download";
+
       const response = await fetch(
-        "http://127.0.0.1:5001/users/report/download",
+        url,
         {
           method: "GET",
         }
@@ -72,11 +80,11 @@ const AdminPage = () => {
       }
 
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const downloadUrl = window.URL.createObjectURL(blob);
 
       const a = document.createElement("a");
-      a.href = url;
-      a.download = "attendance_report.xlsx";
+      a.href = downloadUrl;
+      a.download = `attendance_report_${departmentFilter || "all"}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -101,6 +109,10 @@ const AdminPage = () => {
 
   const fetchBase64 = async (filePath) => {
     try {
+      if (sessionStorage.getItem(filePath)) {
+        return sessionStorage.getItem(filePath); // 🔹 Gunakan cache jika ada
+      }
+
       const response = await fetch(
         "http://127.0.0.1:5001/users/file-to-base64",
         {
@@ -146,7 +158,7 @@ const AdminPage = () => {
               src={`data:image/jpeg;base64,${base64Image}`}
               alt="Check-in"
               className="w-16 h-16 object-cover rounded-lg cursor-pointer transition-transform duration-300 hover:scale-125"
-              onClick={() => setIsOpen(true)} // Klik untuk membuka modal
+              onClick={() => setIsOpen(true)}
             />
 
             {/* Popup Modal */}
@@ -197,6 +209,80 @@ const AdminPage = () => {
           onClick={handleLogout}
         />
         <h1 className="text-center text-6xl font-sans">Laporan Absensi</h1>
+      </div>
+
+      <div className="p-4">
+        <label className="mr-2 text-lg font-bold text-blue-700">Filter Departemen:</label>
+        <select
+          className="p-3 border border-blue-400 bg-blue-100 text-blue-700 font-semibold rounded-lg w-full sm:w-72 focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-md transition-all"
+          value={departmentFilter}
+          onChange={(e) => {
+            console.log("Departemen yang dipilih:", e.target.value);
+            setDepartmentFilter(e.target.value);
+          }}
+        >
+          <option value="" className="bg-white text-blue-600">Semua</option>
+          <option value="ATM Services & Product Management" className="bg-white text-blue-600">
+            ATM Services & Product Management
+          </option>
+          <option value="Business Delivery Operation" className="bg-white text-blue-600">
+            Business Delivery Operation
+          </option>
+          <option value="Commercial" className="bg-white text-blue-600">
+            Commercial
+          </option>
+          <option value="Corporate Communication" className="bg-white text-blue-600">
+            Corporate Communication
+          </option>
+          <option value="Corporate Secretary" className="bg-white text-blue-600">
+            Corporate Secretary
+          </option>
+          <option value="Finance, Accounting & Tax" className="bg-white text-blue-600">
+            Finance, Accounting & Tax
+          </option>
+          <option value="General Affairs" className="bg-white text-blue-600">
+            General Affairs
+          </option>
+          <option value="Human Capital Management" className="bg-white text-blue-600">
+            Human Capital Management
+          </option>
+          <option value="IT Governance & Management" className="bg-white text-blue-600">
+            IT Governance & Management
+          </option>
+          <option value="IT Infrastructure & Services" className="bg-white text-blue-600">
+            IT Infrastructure & Services
+          </option>
+          <option value="IT Security" className="bg-white text-blue-600">
+            IT Security
+          </option>
+          <option value="Marketing Communication" className="bg-white text-blue-600">
+            Marketing Communication
+          </option>
+          <option value="Officer Regional" className="bg-white text-blue-600">
+            Officer Regional
+          </option>
+          <option value="Operation" className="bg-white text-blue-600">
+            Operation
+          </option>
+          <option value="Sales & Account Management" className="bg-white text-blue-600">
+            Sales & Account Management
+          </option>
+          <option value="Service & Contact Center" className="bg-white text-blue-600">
+            Service & Contact Center
+          </option>
+          <option value="Switching & Digital Solution" className="bg-white text-blue-600">
+            Switching & Digital Solution
+          </option>
+          <option value="Technology" className="bg-white text-blue-600">
+            Technology
+          </option>
+          <option value="Transformation Management Office" className="bg-white text-blue-600">
+            Transformation Management Office
+          </option>
+          <option value="Virtual ATM Solution" className="bg-white text-blue-600">
+            Virtual ATM Solution
+          </option>
+        </select>
       </div>
 
       <div className="bg-white flex flex-col items-center flex-grow p-4">
